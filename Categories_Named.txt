@@ -1,0 +1,86 @@
+AB15982
+AC20120  —  Niederländisch, Flämisch
+AE10100  —  Geschichte
+AE55000  —  Übergreifende Speziallexika nach Sachbegriffen (z.B. Frau, Krieg, Meer)
+AF02000  —  Standardwerke
+AH11012  —  Rechtschreibwörterbücher
+AH11026  —  Fremdwörterbücher
+AH11038  —  Grammatikalische Wörterbücher
+AH12006  —  Einbändige Wörterbücher
+AH16012  —  Rechtschreibwörterbücher
+AH16038  —  Grammatikalische Wörterbücher
+AH16160  —  Englisch
+AH16210  —  Spanisch
+AH16230  —  Portugiesisch
+AH20006  —  Einbändige Wörterbücher
+AH20200  —  Französisch
+AH21009  —  Wörterbücher der Gegenwartssprache, Neologismen
+AH21210  —  Spanisch
+AH24006  —  Einbändige Wörterbücher
+AH30300  —  Russisch
+AH31310  —  Ukrainisch
+AH56020  —  Französisch
+AH56056  —  Chinesisch
+AK16000  —  Allgemeines
+AK20400  —  Dialektische Wissenschaftstheorie
+AK25200  —  Grundlagenforschung
+AK25400  —  Angewandte Forschung
+AK27300  —  Wissenschaft und Bildung
+AK27700  —  Wissenschaft und Kunst
+AK27800  —  Wissenschaft und Technik
+AK30500  —  Förderung durch internationale Stellen
+AK39500  —  Allgemeines
+AK39540  —  Einführung in das wissenschaftliche Arbeiten
+AK39580  —  Abfassen schriftlicher Arbeiten
+AK39900  —  Hilfsmittel zur wissenschaftlichen Arbeit
+AK54430  —  Ethische Fragen (z.B. Datenschutz)
+AK81750  —  Fest- und Gedenkschriften für Institutionen
+AK84000  —  Biografien
+AK85700  —  Museum und Gesellschaft
+AK86700  —  Kulturmanagement, Marketing
+AK88070  —  Berlin
+AL24500  —  Öffentlichkeitsarbeit, Hochschulmarketing
+AL27200  —  Informations- und Kommunikationstechnologie
+AL33400  —  Geistes- und Kulturwissenschaften
+AL33600  —  Technische und angewandte Wissenschaften
+AL34330  —  Computerunterstützter Unterricht (e-Teaching)
+AM12600  —  Einführungen, Grundrisse
+AP12300  —  Medienwissenschaft
+AP15982  —  Recht
+AP18420  —  Internet
+AP19000  —  International, Allgemeines
+AP19100  —  Deutschland
+AP19180  —  Deutschland (Östliche Länder) / DDR mit Berlin <Ost>
+AP29408  —  Deutsches Sprachgebiet
+AP34000  —  Hörfunk/Fernsehen und Gesellschaft
+AP44983  —  USA
+AP48600  —  Trickfilm, Zeichenfilm
+AP51338  —  Tarantino, Quentin
+AP56100  —  Gestaltungsmittel, Dreharbeit
+AP56400  —  Kameraführung
+AP56500  —  Beleuchtung
+AP56700  —  Kopieren, Schnitt, Montage, Filmtitel
+AP58000  —  Allgemeines
+AP58300  —  Filmproduktion, Filmwirtschaft
+AP72000  —  Allgemeines
+AP74200  —  (placeholder)
+AR14350  —  Umweltethik, Umweltphilosophie
+AR19000  —  Ernährung, Allgemeines
+BE8600  —  Allgemeines, Einführungen, Gesamtdarstellungen
+BF9000  —  Wissenschaftstheorie
+BG2480  —  Linguistik und Strukturalismus
+CC5000  —  Einführungen, Bibliografien, Handbücher
+CM4000  —  Statistik
+CP1000  —  Einführungen und Lehrbücher, Kompendien, Serien
+CQ1000  —  Einführung, Grundfragen, Lehrbücher, Kompendien
+CR1000  —  Einführung, Grundfragen, Lehrbücher, Kompendien
+CS5500  —  Psychophysiologische Diagnostik
+ST120  —  Grundlagen der Informatik
+ST230  —  Software allgemein, (Einführung, Lehrbücher, Methoden der Programmierung) Software engineering, Programmentwicklungssysteme und Frameworks, Softwarewerkzeuge
+ST250  —  Einzelne Programmiersprachen (A-Z)
+ST252  —  Web-Programmierung, allgemein
+ZG8590  —  Formelsammlungen
+ZG9148  —  Technische Formgebung (Industrial Design)
+ZH8900  —  Beleuchtung
+ZQ6230  —  Mobiler Roboter, Robotersysteme
+ZY9200  —  Allgemeines; Einführungen

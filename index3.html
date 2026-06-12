@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>RVK-Lookup (lokal)</title>
+  <style>
+    :root{font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; color:#111}
+    body{max-width:900px;margin:32px auto;padding:20px}
+    h1{margin:0 0 12px;font-size:20px}
+    .card{border:1px solid #e6e6e6;border-radius:10px;padding:16px;margin-top:12px;background:#fff}
+    .row{display:flex;gap:8px}
+    input[type=text]{flex:1;padding:10px;border:1px solid #ddd;border-radius:8px}
+    button{padding:10px 12px;border-radius:8px;background:#0066cc;color:#fff;border:none;cursor:pointer}
+    button:hover{background:#0052a3}
+    .badge{display:inline-block;padding:6px 8px;border-radius:6px;background:#f1f5f9;font-weight:600;margin-right:8px;font-family:monospace}
+    .score{color:#666;font-size:13px}
+    .meta{font-size:13px;color:#666;margin-top:6px}
+    .match-list{margin-top:8px;font-size:14px;color:#555}
+    details{margin-top:8px}
+    summary{cursor:pointer;user-select:none}
+    .suggestions{display:grid;grid-template-columns:1fr;gap:8px;margin-top:12px}
+    .suggestion-item{border-top:1px solid #f1f1f1;padding-top:8px}
+  </style>
+</head>
+<body>
+  <h1>RVK-Kategorie lokal bestimmen</h1>
+  <div class="card">
+    <form id="searchForm">
+      <div style="display:flex;gap:8px;flex-direction:column">
+        <input id="inputText" type="text" placeholder="Titel, Autor, ISBN, Schlagwort oder Freitext" />
+        <label style="font-size:13px;margin-top:6px"><input id="muFilter" type="checkbox" style="margin-right:6px"/> Nur MU‑Berlin Liste (Literatur)</label>
+        <div class="row">
+          <button id="submitBtn" type="submit">Suchen</button>
+          <button id="clearBtn" type="button">Leeren</button>
+        </div>
+      </div>
+    </form>
+    <div id="status" class="meta"></div>
+  </div>
+
+  <div id="results"></div>
+
+  <script>
+    // CATEGORIES: RVK-Daten aus Bibliotheksbestand(Stand 26-06-09).csv
+    let CATEGORIES = [
+      { notation: "AN93000", label: "Informationstheorie für Designer" },
+      { notation: "AP12300", label: "Medienwissenschaft" },
+      { notation: "AP12400", label: "Publizistikwissenschaft" },
+      { notation: "AP13200", label: "Biographien" },
+      { notation: "AP13300", label: "Geschichte" },
+      { notation: "AP16650", label: "Wirkungsforschung" },
+      { notation: "AK25400", label: "Angewandte Forschung" },
+      { notation: "AK39580", label: "Abfassen schriftlicher Arbeiten" },
+      { notation: "AM12600", label: "Einführungen, Grundrisse" },
+      { notation: "CM1000", label: "Allgemeine und einführende Werke" },
+      { notation: "CM5500", label: "Entscheidungstheorie, Spieltheorie" },
+      { notation: "CZ1300", label: "Allgemeines" },
+      { notation: "CV1000", label: "Einführung, Grundfragen, Lehrbücher, Kompendien" },
+      { notation: "CV7500", label: "Kultur und Gesellschaft, Kulturvergleichende Psychologie, Massenpsychologie" },
+      { notation: "CV3600", label: "Medienpsychologie" },
+      { notation: "LH78000", label: "Allgemeine geschichtliche Darstellungen, Abbildungswerke zum gesamten Kunstgewerbe, Grundsätzliches (Theorie, Ästhetik)" },
+      { notation: "LH79500", label: "Gesamtdarstellungen" },
+      { notation: "MR200", label: "Inhaltsanalyse" },
+      { notation: "MR2000", label: "Allgemeine Werke und Lehrbücher" },
+      { notation: "MR2400", label: "Beobachtung, Interview und Umfrage, Feldforschung (auch Meinungsforschung, Marktforschung)" },
+      { notation: "MR7100", label: "Kultursystem, Kulturbegriff (auch theoretische Kulturanthropologie) und Kulturvergleich; Kultursoziologie allgemein" },
+      { notation: "MS7965", label: "Internet, neue Medien" },
+      { notation: "QP210", label: "Allgemeines" },
+      { notation: "QP611", label: "Marktforschung" },
+      { notation: "QP621", label: "Absatzmethoden" },
+      { notation: "QP630", label: "Allgemeines" },
+      { notation: "QP632", label: "Werbeträger. Werbemittel" },
+      { notation: "QP637", label: "Public Relations" },
+      { notation: "QP680", label: "Internationales Marketing" },
+      { notation: "QB000", label: "Allgemeine Lexika" },
+      { notation: "QD000", label: "Allgemeines" },
+      { notation: "ST300", label: "Allgemeines" },
+      { notation: "ST324", label: "Computerspiele" },
+      { notation: "VC6150", label: "Allgemeines" }
+    ];
+
+    const form = document.getElementById('searchForm');
+    const input = document.getElementById('inputText');
+    const muCheckbox = document.getElementById('muFilter');
+    const status = document.getElementById('status');
+    const results = document.getElementById('results');
+
+    // MU list (will be populated from attached Categories_Named.txt if available)
+    let MU_SET = null;
+    const muLoadPromise = (async function loadMUList(){
+      try {
+        const res = await fetch('Categories_Named.txt');
+        if (!res.ok) return;
+        const txt = await res.text();
+        const lines = txt.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+        const notations = lines.map(l=>l.split(/\s+/)[0]).filter(Boolean);
+        MU_SET = new Set(notations);
+        console.log('MU list loaded, entries:', MU_SET.size);
+        if (muCheckbox.checked) renderOverview(true);
+      } catch(e){ console.warn('Could not load MU list:', e); MU_SET = null; }
+    })();
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+      status.textContent = 'Extrahiere Schlüsselwörter (lokal)…';
+      results.innerHTML = '';
+      try {
+        const keywords = extractKeywordsLocal(text);
+        status.textContent = `Gefundene Schlüsselwörter: ${keywords.join(', ')}`;
+        let matches = matchCategories(keywords);
+        if (muCheckbox.checked) {
+          if (!MU_SET) { status.textContent = 'MU‑Liste nicht geladen; deaktiviere Filter oder lade Datei.'; }
+          else {
+            const all = [matches.primary].concat(matches.suggestions);
+            const filtered = all.filter(r => r && MU_SET.has(r.cat.notation));
+            if (filtered.length === 0) {
+              results.innerHTML = '<div class="card">Keine passende Kategorie innerhalb der MU‑Berlin Liste gefunden.</div>';
+              return;
+            }
+            matches = { primary: filtered[0], suggestions: filtered.slice(1,4) };
+          }
+        }
+        renderResults(matches, keywords);
+      } catch (err) {
+        console.error(err);
+        status.textContent = 'Fehler beim Extrahieren der Schlüsselwörter.';
+      }
+    });
+
+    muCheckbox.addEventListener('change', () => {
+      if (muCheckbox.checked && MU_SET === null) {
+        status.textContent = 'MU‑Liste wird geladen…';
+        muLoadPromise.finally(()=>{
+          status.textContent = '';
+          renderOverview(muCheckbox.checked);
+        });
+      } else {
+        renderOverview(muCheckbox.checked);
+      }
+    });
+
+    function renderOverview(filterToMU=false) {
+      results.innerHTML = '';
+      const container = document.createElement('div');
+      container.className = 'card';
+      const title = document.createElement('div');
+      title.innerHTML = filterToMU ? '<strong>MU‑Berlin Übersicht</strong>' : '<strong>RVK Übersicht</strong>';
+      container.appendChild(title);
+
+      const list = document.createElement('div');
+      list.style.marginTop = '10px';
+      const items = [];
+      if (filterToMU && MU_SET) {
+        for (const c of CATEGORIES) if (MU_SET.has(c.notation)) items.push(c);
+      } else {
+        items.push(...CATEGORIES);
+      }
+      items.slice(0,20).forEach(it => {
+        const row = document.createElement('div');
+        row.style.padding = '6px 0';
+        row.innerHTML = `<span class="badge">${it.notation}</span> ${escapeHtml(it.label || '(kein Label)')}`;
+        list.appendChild(row);
+      });
+      if ((filterToMU && MU_SET && items.length>20) || (!filterToMU && CATEGORIES.length>20)) {
+        const more = document.createElement('div');
+        more.style.marginTop = '8px';
+        more.className = 'meta';
+        more.textContent = 'Nur die ersten 20 Einträge angezeigt.';
+        list.appendChild(more);
+      }
+      container.appendChild(list);
+      results.appendChild(container);
+    }
+
+    renderOverview(false);
+
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      input.value = '';
+      results.innerHTML = '';
+      status.textContent = '';
+    });
+
+    function extractKeywordsLocal(text) {
+      const stopwords = new Set(['der','die','das','und','oder','ein','eine','in','im','auf','zu','mit','von','für','ist','als','an','des','den','dem','bei','auch','nicht','sowie']);
+      const normalized = text.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      const tokens = normalized.split(/[^\p{Letter}]+/u).filter(Boolean);
+      const freq = {};
+      tokens.forEach(t => { if (t.length > 2 && !stopwords.has(t)) freq[t] = (freq[t]||0)+1; });
+      const entries = Object.entries(freq).sort((a,b)=>b[1]-a[1]);
+      const keywords = entries.slice(0,8).map(e=>e[0]);
+      if (keywords.length < 5) {
+        const words = normalized.split(/\s+/).filter(w=>w.length>3 && !stopwords.has(w));
+        words.forEach(w=>{ if (!keywords.includes(w) && keywords.length<6) keywords.push(w); });
+      }
+      return keywords.slice(0,8);
+    }
+
+    function matchCategories(keywords) {
+      const kws = keywords.map(k => k.toLowerCase());
+
+      function trigrams(s) {
+        const t = s.replace(/[^a-z0-9äöüß ]/g,'').toLowerCase();
+        const parts = t.split(/\s+/).filter(Boolean).join(' ');
+        const out = new Set();
+        for (let i=0;i+3<=parts.length;i++) out.add(parts.slice(i,i+3));
+        return out;
+      }
+
+      const results = CATEGORIES.map(cat => {
+        const label = (cat.label || '').toLowerCase();
+        const labelWords = label.split(/\s+/).filter(Boolean);
+        const labelTris = trigrams(label);
+        const matched = [];
+        let score = 0;
+
+        kws.forEach(k => {
+          if (!k) return;
+          if (label.includes(k)) { matched.push(k); score += 3; return; }
+          if (labelWords.includes(k)) { matched.push(k); score += 3; return; }
+          if (labelWords.some(w=>w.startsWith(k) || k.startsWith(w))) { matched.push(k); score += 2; return; }
+          const kTris = trigrams(k);
+          let common = 0;
+          kTris.forEach(t => { if (labelTris.has(t)) common++; });
+          if (common > 0) { matched.push(k); score += 1 + Math.min(2, common); }
+        });
+
+        const norm = score > 0 ? score / Math.max(1, labelWords.length) : 0;
+        return { cat, matches: Array.from(new Set(matched)), score, norm };
+      });
+
+      results.sort((a,b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        if (b.norm !== a.norm) return b.norm - a.norm;
+        return (a.cat.label||'').localeCompare(b.cat.label||'');
+      });
+
+      const primary = results[0];
+      const suggestions = results.slice(1,6);
+      return { primary, suggestions };
+    }
+
+    function renderResults(matches, keywords) {
+      results.innerHTML = '';
+      if (!matches.primary || matches.primary.score === 0) {
+        results.innerHTML = '<div class="card">Keine passende Kategorie gefunden.</div>';
+        return;
+      }
+
+      const primary = matches.primary;
+      const primaryCard = document.createElement('div');
+      primaryCard.className = 'card';
+      primaryCard.innerHTML = `
+        <div style="display:flex;gap:12px;align-items:flex-start">
+          ${primary.cat.image ? `<img src="${escapeHtml(primary.cat.image)}" alt="Bild" style="width:72px;height:72px;object-fit:cover;border-radius:6px">` : ''}
+          <div style="flex:1">
+            <div><span class="badge">${primary.cat.notation}</span> <strong>${escapeHtml(primary.cat.label || '(kein Label)')}</strong></div>
+            ${primary.cat.author ? `<div class="meta">Autor: ${escapeHtml(primary.cat.author)}</div>` : ''}
+            <div class="score">${primary.score} von ${keywords.length} Keywords gefunden</div>
+            <div class="match-list">Übereinstimmende Schlüsselwörter: ${primary.matches.length > 0 ? primary.matches.map(escapeHtml).join(', ') : 'Fuzzy Match'}</div>
+          </div>
+        </div>
+      `;
+      results.appendChild(primaryCard);
+
+      if (matches.suggestions.some(s=>s.score > 0)) {
+        const sugContainer = document.createElement('div');
+        sugContainer.className = 'card';
+        sugContainer.innerHTML = '<strong>5 weitere Vorschläge</strong>';
+        const list = document.createElement('div');
+        list.className = 'suggestions';
+        matches.suggestions.forEach(s => {
+          if (s.score === 0) return;
+          const item = document.createElement('div');
+          item.className = 'suggestion-item';
+          item.innerHTML = `
+            <div style="display:flex;gap:10px;align-items:flex-start">
+              ${s.cat.image ? `<img src="${escapeHtml(s.cat.image)}" alt="Bild" style="width:48px;height:48px;object-fit:cover;border-radius:6px">` : ''}
+              <div style="flex:1">
+                <div><span class="badge">${s.cat.notation}</span><strong>${escapeHtml(s.cat.label || '(kein Label)')}</strong></div>
+                ${s.cat.author ? `<div class="meta">Autor: ${escapeHtml(s.cat.author)}</div>` : ''}
+                <div class="score">${s.score} von ${keywords.length} Keywords gefunden</div>
+                <div class="match-list">Übereinstimmende Schlüsselwörter: ${s.matches.length > 0 ? s.matches.map(escapeHtml).join(', ') : 'Fuzzy Match'}</div>
+              </div>
+            </div>
+          `;
+          list.appendChild(item);
+        });
+        sugContainer.appendChild(list);
+        results.appendChild(sugContainer);
+      }
+    }
+
+    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"})[c]); }
+  </script>
+</body>
+</html>

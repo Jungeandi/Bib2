@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tests — RVK Lookup</title>
+  <style>body{font-family:Arial,Helvetica,sans-serif;padding:20px} .ok{color:green} .fail{color:red}</style>
+</head>
+<body>
+  <h2>Beispieltests für RVK-Lookup (lokal)</h2>
+  <div id="out"></div>
+  <script>
+    // Minimal sample of CATEGORIES (same keys as index3.html)
+    const CATEGORIES = [
+      { notation: "CV3600", label: "Medienpsychologie" },
+      { notation: "AP12300", label: "Medienwissenschaft" },
+      { notation: "MS7965", label: "Internet, neue Medien" }
+    ];
+
+    function extractKeywordsLocal(text) {
+      const stopwords = new Set(['der','die','das','und','oder','ein','eine','in','im','auf','zu','mit','von','für','ist','als','an','des','den','dem','bei','auch','nicht','sowie']);
+      const normalized = text.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      const tokens = normalized.split(/[^\p{Letter}]+/u).filter(Boolean);
+      const freq = {};
+      tokens.forEach(t => { if (t.length > 2 && !stopwords.has(t)) freq[t] = (freq[t]||0)+1; });
+      const entries = Object.entries(freq).sort((a,b)=>b[1]-a[1]);
+      const keywords = entries.slice(0,8).map(e=>e[0]);
+      if (keywords.length < 5) {
+        const words = normalized.split(/\s+/).filter(w=>w.length>3 && !stopwords.has(w));
+        words.forEach(w=>{ if (!keywords.includes(w) && keywords.length<6) keywords.push(w); });
+      }
+      return keywords.slice(0,8);
+    }
+
+    function matchCategories(keywords) {
+      const kws = keywords.map(k => k.toLowerCase());
+      function trigrams(s) {
+        const t = s.replace(/[^a-z0-9äöüß ]/g,'').toLowerCase();
+        const parts = t.split(/\s+/).filter(Boolean).join(' ');
+        const out = new Set();
+        for (let i=0;i+3<=parts.length;i++) out.add(parts.slice(i,i+3));
+        return out;
+      }
+      const results = CATEGORIES.map(cat => {
+        const label = (cat.label || '').toLowerCase();
+        const labelWords = label.split(/\s+/).filter(Boolean);
+        const labelTris = trigrams(label);
+        const matched = [];
+        let score = 0;
+        kws.forEach(k => {
+          if (!k) return;
+          if (label.includes(k)) { matched.push(k); score += 3; return; }
+          if (labelWords.includes(k)) { matched.push(k); score += 3; return; }
+          if (labelWords.some(w=>w.startsWith(k) || k.startsWith(w))) { matched.push(k); score += 2; return; }
+          const kTris = trigrams(k);
+          let common = 0;
+          kTris.forEach(t => { if (labelTris.has(t)) common++; });
+          if (common > 0) { matched.push(k); score += 1 + Math.min(2, common); }
+        });
+        const norm = score > 0 ? score / Math.max(1, labelWords.length) : 0;
+        return { cat, matches: Array.from(new Set(matched)), score, norm };
+      });
+      results.sort((a,b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        if (b.norm !== a.norm) return b.norm - a.norm;
+        return (a.cat.label||'').localeCompare(b.cat.label||'');
+      });
+      const primary = results[0];
+      const suggestions = results.slice(1,4);
+      return { primary, suggestions };
+    }
+
+    function assert(cond, msg){ if (!cond) throw new Error(msg || 'Assertion failed'); }
+
+    const out = document.getElementById('out');
+    function logLine(ok, text){ const el = document.createElement('div'); el.className = ok ? 'ok' : 'fail'; el.textContent = (ok? 'PASS: ' : 'FAIL: ') + text; out.appendChild(el); }
+
+    // Test cases
+    const tests = [];
+
+    tests.push(() => {
+      const kws = extractKeywordsLocal('Psychologie Medien');
+      assert(kws.includes('psychologie'), 'erwartet "psychologie" in keywords');
+      assert(kws.includes('medien'), 'erwartet "medien" in keywords');
+      logLine(true, 'extractKeywordsLocal: einfache Tokenisierung klappt');
+    });
+
+    tests.push(() => {
+      const kws = extractKeywordsLocal('Psychologie Medien');
+      const m = matchCategories(kws);
+      assert(m.primary && m.primary.cat && m.primary.cat.notation === 'CV3600', 'erwartet CV3600 als Primärmatch');
+      logLine(true, 'matchCategories: primäre Kategorie korrekt (CV3600)');
+    });
+
+    tests.push(() => {
+      // MU filter simulation
+      const kws = extractKeywordsLocal('Medienwissenschaft');
+      const m = matchCategories(kws);
+      const MU_SET = new Set(['AP12300']);
+      const allowed = MU_SET.has(m.primary.cat.notation);
+      assert(allowed === true, 'erwartet dass AP12300 in MU_SET ist');
+      logLine(true, 'MU‑Filter Simulation: Treffer innerhalb MU_SET erkannt');
+    });
+
+    // Run tests and catch failures
+    (async function run(){
+      for (let i=0;i<tests.length;i++){
+        try{ await tests[i](); } catch(err){ logLine(false, err.message || String(err)); }
+      }
+      const done = document.createElement('div'); done.style.marginTop='12px'; done.textContent = 'Fertig. Öffne die Konsole für detailliertere Logs.'; out.appendChild(done);
+      console.log('Tests abgeschlossen');
+    })();
+  </script>
+</body>
+</html>
